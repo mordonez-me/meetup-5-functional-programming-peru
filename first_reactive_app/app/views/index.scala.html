@@ -1,0 +1,108 @@
+@()(implicit request:RequestHeader)
+
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title></title>
+        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/main.css")">
+        <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
+        <script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.7/jquery.min.js"></script>
+        <script type="text/javascript" src="@routes.Assets.at("javascripts/noty/packaged/jquery.noty.packaged.min.js")"></script>
+        <script>
+            
+
+            function connect(attempt){
+                var connectionAttempt = attempt
+                var maxRetries = 10
+                var secondsToRetry = 5
+                var ws = new WebSocket("@controllers.routes.Application.tweetsSocket.webSocketURL()");    
+                var connected = false
+
+                ws.onopen = function () {
+                    connectionAttempt = 1
+                    noty({
+                        layout: "top",
+                        text: "Conectado!",
+                        type: "success",
+                        force: true,
+                        timeout: false,
+                        click: null,
+                        killer:true
+                    });
+                    connected = true
+                };
+
+                ws.onclose = function (error) {
+                    console.log('WebSocket Error ' + error);
+                    if(connectionAttempt <= maxRetries ){
+                        noty({
+                            layout: "top",
+                            text: "Se perdió la conexión, reintentando conectar en "+ secondsToRetry +" segundos, intento numero " + connectionAttempt,
+                            type: "error",
+                            force: true,
+                            timeout: false,
+                            click: null,
+                            killer:true
+                        });
+                        setTimeout(function(){
+                            connect(connectionAttempt + 1)
+                        }, secondsToRetry * 1000)
+                    } else {
+                         noty({
+                            layout: "top",
+                            text: "La conexión con el servidor se ha perdido" ,
+                            type: "error",
+                            force: true,
+                            timeout: false,
+                            click: null,
+                            killer:true
+                        });
+                    }
+
+                    connected = false
+                };
+
+                ws.onmessage = function (e) {
+                    var json = JSON.parse(e.data)
+                    console.log(json)
+                    if(json.error){
+                        switch(json.error){
+                            case "streamer-disconnected":
+                            break;
+                        }
+                        noty({
+                            layout: "top",
+                            text: json.message,
+                            type: "error",
+                            force: true,
+                            timeout: false,
+                            click: null,
+                            killer:true
+                        });
+                    } else {
+                        $.noty.closeAll()
+                        if(connected == false){
+                            connected = true
+                            noty({
+                                layout: "top",
+                                text: "Conectado!" ,
+                                type: "success",
+                                force: true,
+                                timeout: false,
+                                click: null,
+                                killer:true
+                            });
+                        }
+                        
+                    }
+                };
+            }
+
+            connect(1)
+        </script>
+    </head>
+    <body>
+    </body>
+</html>
+
